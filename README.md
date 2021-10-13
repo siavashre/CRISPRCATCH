@@ -1,7 +1,7 @@
 # PFGE
 A tool for analyzing ecDNA structure. It works with data comes from PFGE experiment. 
 
-### Prerequisites:
+## Prerequisites:
 This tool use some pre developed tool and must install them before using this tool. These tool are:
 - The [jluebeck/PrepareAA](https://github.com/jluebeck/PrepareAA) is manadtory for PFGE and variable `$PreAA` should set to the directory you install PrepareAA. For adding this variable you can change your directory to where you install PrepareAA and run the following commands:
         
@@ -13,8 +13,9 @@ This tool use some pre developed tool and must install them before using this to
 - [bwa mem](https://github.com/lh3/bwa)
 ## Installation
 After installing prerequisites, please clone the PFGE repo consider running the following to add a line to your `.bashrc` file:
-`cd PFGE/`
 
-`echo export PFGE=$PWD >> ~/.bashrc`
-
-`source ~/.bashrc`
+        cd PFGE/
+        echo export PFGE=$PWD >> ~/.bashrc
+        source ~/.bashrc
+## Usage
+For running this tool, 
