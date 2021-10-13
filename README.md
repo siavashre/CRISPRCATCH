@@ -11,3 +11,10 @@ This tool use some pre developed tool and must install them before using this to
 - The [jluebeck/CycleViz](https://github.com/jluebeck/CycleViz) is manadtory for PFGE and variable `$CV_SRC` should set in the bashrc. You can find more information about how to set `$CV_SRC` on CycleViz Github page.
 - [samtools](http://www.htslib.org/) (PFGE supports versions >= 1.0)
 - [bwa mem](https://github.com/lh3/bwa)
+## Installation
+After installing prerequisites, please clone the PFGE repo consider running the following to add a line to your `.bashrc` file:
+`cd PFGE/`
+
+`echo export PFGE=$PWD >> ~/.bashrc`
+
+`source ~/.bashrc`
