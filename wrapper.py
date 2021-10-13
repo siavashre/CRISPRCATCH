@@ -96,6 +96,57 @@ def detecting_amplion_numbers():
 				amplicon_mapping.append(amplicon_number)
 	return amplicon_mapping
 
+def run_graph_cleaner():
+	for amplicon_number in amplicon_mapping:
+		clean_cmd = "python2 $PreAA/scripts/graph_cleaner.py" + " -g "+ name + "_AA_results/" + name + "_amplicon"+amplicon_number+"_graph.txt " + "--filter_non_everted --max_hop_size 1000 --max_hop_support 999999"
+		print(clean_cmd) 
+		call(clean_cmd)
+
+def compare_bulk_band_report():
+	bulk = parsing_AA_graph(args.bulk)
+	d = {}
+	match_count = {}
+	for amplicon_number in amplicon_mapping:
+		d[band+'_amplicon'+amplicon_number] = parsing_AA_graph(cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt')
+		d[band+'_amplicon'+amplicon_number], match_count[band+'_amplicon'+amplicon_number] =  compare_bulk_band(bulk, d[band+'_amplicon'+amplicon_number])
+	with open('report.txt', 'w') as f:
+		for amplicon_number in amplicon_mapping:
+			f.write('In band {C}_amplicon{D}, {A} out of {B} are matched to bulk\n'.format(A = match_count[band+'_amplicon'+amplicon_number], B = len(d[band+'_amplicon'+amplicon_number]), C = band,D = amplicon_number))
+
+def run_path_finder():
+	if not os.path.exists('beds'):
+		os.mkdir('beds')
+	for amplicon_number in amplicon_mapping:
+		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length}".format(script = '$PreAA/scripts/plausible_paths.py', graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt', max_length=band_size)
+		call(find_path_cmd,shell=True)
+		print(find_path_cmd)
+		generate_cnd_cmd = 'python3 '+ '$PFGE/utils/generate_cnv.py' + ' -i {input} -o {output}'.format(input =cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt', output = 'beds/'+cell_line + '_' + band+'_amplicon'+amplicon_number )
+		print(generate_cnd_cmd)
+		call(generate_cnd_cmd,shell=True)
+
+def detect_coverage():
+	extract_bedgraph_cmd = 'python3 {extract_bedgraph} --bed {bed} --bam {bam} -o {out}'.format(extract_bedgraph = '$CV_SRC/extract_bedgraph.py' , bed = amplicon_bed_file , bam = cell_line + '_' + band+'.cs.rmdup.bam',out = cell_line+'_'+band)
+	print(extract_bedgraph_cmd)
+	call(extract_bedgraph_cmd,shell=True)
+	band_norm_cmd = 'python3 {band_norm} -i {band_cov} -o {out}'.format(band_norm = '$PFGE/utils/band_norm.py' , band_cov =cell_line+'_'+band+'_position_coverage.bedgraph', out = cell_line+'_'+band+'_norm.bed' )
+	print(band_norm_cmd)
+	call(band_norm_cmd,shell=True)
+
+def run_visualization():
+	bed_list = os.listdir('beds/')
+	for i in bed_list:
+		if i.startswith(cell_line):
+			cycle_number = i.split('_')[3].split('.')[0][5:]
+			amplicon_number = i.split('_')[2][8:]
+			write_yml(cell_line+'_'+band+'_cycle'+cycle_number, cell_line+'_'+band+'_norm.bed')
+			cycle_vis_cmd = 'python2 {cycle_viz} --cycles_file {cycle_file} --cycle {cycle} --graph {graph} --ref hg19 --rotate_to_min --feature_yaml_list {yaml} --label_segs numbers --center_hole 5 --feature_ref_offset 1.5 --noPDF -o {output}'.format(
+				cycle_viz ='$CV_SRC/CycleViz.py' , cycle_file = cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt' , 
+				cycle = cycle_number, graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt',
+				yaml = cell_line+'_'+band+'_cycle'+cycle_number+'.yaml',
+				output = cell_line+'_'+band+'_amplicon'+amplicon_number+'_cycle'+cycle_number)
+			print(cycle_vis_cmd) 
+			call(cycle_vis_cmd,shell=True)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-f1", "--fastq1", help="fastq file 1", required=True)
 parser.add_argument("-f2", "--fastq2", help="fastq file 2", required=True)
@@ -126,53 +177,9 @@ else:
 	amplicon_bed_file = args.bed
 run_AA(args.fastq1,args.fastq2,args.ref)
 amplicon_mapping = detecting_amplion_numbers()
+run_graph_cleaner()
+compare_bulk_band_report()
+run_path_finder()
+detect_coverage()
+run_visualization()
 
-##################		Graph Cleaner		##############################
-for amplicon_number in amplicon_mapping:
-	clean_cmd = "python2 $PreAA/scripts/graph_cleaner.py" + " -g "+ name + "_AA_results/" + name + "_amplicon"+amplicon_number+"_graph.txt " + "--filter_non_everted --max_hop_size 1000 --max_hop_support 999999"
-	print(clean_cmd) 
-	call(clean_cmd)
-
-bulk = parsing_AA_graph(args.bulk)
-d = {}
-match_count = {}
-for amplicon_number in amplicon_mapping:
-	d[band+'_amplicon'+amplicon_number] = parsing_AA_graph(cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt')
-	d[band+'_amplicon'+amplicon_number], match_count[band+'_amplicon'+amplicon_number] =  compare_bulk_band(bulk, d[band+'_amplicon'+amplicon_number])
-
-with open('report.txt', 'w') as f:
-	for amplicon_number in amplicon_mapping:
-		f.write('In band {C}_amplicon{D}, {A} out of {B} are matched to bulk\n'.format(A = match_count[band+'_amplicon'+amplicon_number], B = len(d[band+'_amplicon'+amplicon_number]), C = band,D = amplicon_number))
-
-######################################################################## Finding Path
-if not os.path.exists('beds'):
-	os.mkdir('beds')
-for amplicon_number in amplicon_mapping:
-	find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length}".format(script = '$PreAA/scripts/plausible_paths.py', graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt', max_length=band_size)
-	call(find_path_cmd,shell=True)
-	print(find_path_cmd)
-	generate_cnd_cmd = 'python3 '+ '$PFGE/utils/generate_cnv.py' + ' -i {input} -o {output}'.format(input =cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt', output = 'beds/'+cell_line + '_' + band+'_amplicon'+amplicon_number )
-	print(generate_cnd_cmd)
-	call(generate_cnd_cmd,shell=True)
-
-######################################################################## visualization
-extract_bedgraph_cmd = 'python3 {extract_bedgraph} --bed {bed} --bam {bam} -o {out}'.format(extract_bedgraph = '$CV_SRC/extract_bedgraph.py' , bed = amplicon_bed_file , bam = cell_line + '_' + band+'.cs.rmdup.bam',out = cell_line+'_'+band)
-print(extract_bedgraph_cmd)
-call(extract_bedgraph_cmd,shell=True)
-band_norm_cmd = 'python3 {band_norm} -i {band_cov} -o {out}'.format(band_norm = '$PFGE/utils/band_norm.py' , band_cov =cell_line+'_'+band+'_position_coverage.bedgraph', out = cell_line+'_'+band+'_norm.bed' )
-print(band_norm_cmd)
-call(band_norm_cmd,shell=True)
-
-bed_list = os.listdir('beds/')
-for i in bed_list:
-	if i.startswith(cell_line):
-		cycle_number = i.split('_')[3].split('.')[0][5:]
-		amplicon_number = i.split('_')[2][8:]
-		write_yml(cell_line+'_'+band+'_cycle'+cycle_number, cell_line+'_'+band+'_norm.bed')
-		cycle_vis_cmd = 'python2 {cycle_viz} --cycles_file {cycle_file} --cycle {cycle} --graph {graph} --ref hg19 --rotate_to_min --feature_yaml_list {yaml} --label_segs numbers --center_hole 5 --feature_ref_offset 1.5 --noPDF -o {output}'.format(
-			cycle_viz ='$CV_SRC/CycleViz.py' , cycle_file = cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt' , 
-			cycle = cycle_number, graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt',
-			yaml = cell_line+'_'+band+'_cycle'+cycle_number+'.yaml',
-			output = cell_line+'_'+band+'_amplicon'+amplicon_number+'_cycle'+cycle_number)
-		print(cycle_vis_cmd) 
-		call(cycle_vis_cmd,shell=True)
