@@ -1,6 +1,8 @@
 import os
 from collections import defaultdict
 import argparse
+from subprocess import call
+import sys
 
 class Discordant_edge:
 	chr1 = ''
@@ -64,6 +66,36 @@ def contain_discordant(file):
 				return True
 	return False
 
+def run_AA(f1,f2,ref_v):
+	Pre_AA_cmd = "python3 {PrepareAA} --ref {ref_v} -t {thread} --use_old_samtools -s {name} --fastqs {f1} {f2} --no_filter --cngain 0 --cnsize_min 0 --cnv_bed {amplicon_bed_file} ".format(
+	PrepareAA = "$PreAA/PrepareAA.py" , ref_v= ref_v, thread = args.t, name = name , f1 = f1 , f2 = f2, amplicon_bed_file = amplicon_bed_file)
+	print(Pre_AA_cmd)
+	call(Pre_AA_cmd,shell=True)
+	if not os.path.exists(name+'_AA_results'):
+		os.mkdir(name+'_AA_results')
+	amplified_amplicon_cmd = '$AA_SRC/amplified_intervals.py --no_cstats --bed {bed} --bam {bam} --ref hg19 --cnsize_min 0 --gain 0 --out {out}'.format(bed=amplicon_bed_file,bam = name + '.cs.rmdup.bam', out= name + '_AA_CNV_SEEDS' )
+	print(amplified_amplicon_cmd)
+	call(amplified_amplicon_cmd,shell=True)
+	bam_file = name+'.cs.rmdup.bam'
+	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min 3 --no_cstats --insert_sdevs 8.5".format(out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
+	print(AA_cmd)
+	call(AA_cmd,shell=True)
+
+def generated_amplicon_bed_file():
+	generate_bed_cmd = 'python2 {grah_to_bed} -g {graph} --unmerged'.format(grah_to_bed ='$PreAA/scripts/graph_to_bed.py', graph = args.bulk )
+	print(generate_bed_cmd)
+	call(generate_bed_cmd,shell=True)
+
+def detecting_amplion_numbers():
+	amplicon_mapping = []
+	AA_list = os.listdir(name+'_AA_results/')
+	for file in AA_list:
+		if file.endswith('_graph.txt'):
+			if contain_discordant(name+'_AA_results/'+file):
+				amplicon_number = file.split('_')[2][8:]
+				amplicon_mapping.append(amplicon_number)
+	return amplicon_mapping
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-f1", "--fastq1", help="fastq file 1", required=True)
 parser.add_argument("-f2", "--fastq2", help="fastq file 2", required=True)
@@ -74,53 +106,32 @@ parser.add_argument("-t", "--t", help="Number of thread", required=True)
 parser.add_argument("-r", "--ref", help="Reference genome version", required=True)
 parser.add_argument("-bulk", "--bulk", help="AA breakpoint graph file for bulk cell line", required=True)
 parser.add_argument("-l", "--length", help="Maximum estimated length for this band", required=True)
+parser.add_argument("-bed", "--bed", help="bed file describing amplicon region", required=False)
 args = parser.parse_args()
-amplicon_mapping = []
-output_ans = args.output
 
-generate_cnd_dir = '/nucleus/projects/sraeisid/AA/scripts/generate_cnv.py'
-band_norm_dir = '/nucleus/projects/sraeisid/AA/scripts/band_norm.py'
 
 T = 101 #Comparing discordant edges
-########################################
-
 band_size = int(args.length)
 band = args.band
 cell_line = args.sname
-os.chdir(output_ans)
+if not os.path.exists(args.output):
+	print('Output folder does not exist')
+	sys.exit(0) 
+os.chdir(args.output)
 name = cell_line + '_' + band
-f1 = args.fastq1
-f2 = args.fastq2
-ref_v = args.ref
-generate_bed_cmd = 'python3 {grah_to_bed} -g {graph} --unmerged'.format(grah_to_bed ='$PreAA/scripts/graph_to_bed.py', graph = args.bulk )
-print(generate_bed_cmd)
-os.system(generate_bed_cmd)
-amplicon_bed_file = args.bulk[:args.bulk.rfind('.')]+'.bed'
-Pre_AA_cmd = "python3 {PrepareAA} --ref {ref_v} -t {thread} --use_old_samtools -s {name} --fastqs {f1} {f2} --no_filter --cngain 0 --cnsize_min 0 --cnv_bed {amplicon_bed_file} ".format(
-PrepareAA = "$PreAA/PrepareAA.py" , ref_v= ref_v, thread = args.t, name = name , f1 = f1 , f2 = f2, amplicon_bed_file = amplicon_bed_file)
-print(Pre_AA_cmd)
-os.system(Pre_AA_cmd)
-os.system('mkdir ' + name+'_AA_results')
-amplified_amplicon_cmd = '$AA_SRC/amplified_intervals.py --no_cstats --bed {bed} --bam {bam} --ref hg19 --cnsize_min 0 --gain 0 --out {out}'.format(bed=amplicon_bed_file,bam = name + '.cs.rmdup.bam', out= name + '_AA_CNV_SEEDS' )
-print(amplified_amplicon_cmd)
-os.system(amplified_amplicon_cmd)
-#######		Insert Size Distribution 	########
-bam_file = name+'.cs.rmdup.bam'
-AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min 3 --no_cstats --insert_sdevs 8.5".format(out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
-print(AA_cmd)
-os.system(AA_cmd)
-######## Updating Amplicon Mapping #################################
-AA_list = os.listdir(name+'_AA_results/')
-for file in AA_list:
-	if file.endswith('_graph.txt'):
-		if contain_discordant(name+'_AA_results/'+file):
-			amplicon_number = file.split('_')[2][8:]
-			amplicon_mapping.append(amplicon_number)
+if not args.bed:
+	generated_amplicon_bed_file()
+	amplicon_bed_file = args.bulk[args.bulk.rfind('/')+1:args.bulk.rfind('.')]+'.bed'
+else:
+	amplicon_bed_file = args.bed
+run_AA(args.fastq1,args.fastq2,args.ref)
+amplicon_mapping = detecting_amplion_numbers()
+
 ##################		Graph Cleaner		##############################
 for amplicon_number in amplicon_mapping:
 	clean_cmd = "python2 $PreAA/scripts/graph_cleaner.py" + " -g "+ name + "_AA_results/" + name + "_amplicon"+amplicon_number+"_graph.txt " + "--filter_non_everted --max_hop_size 1000 --max_hop_support 999999"
 	print(clean_cmd) 
-	os.system(clean_cmd)
+	call(clean_cmd)
 
 bulk = parsing_AA_graph(args.bulk)
 d = {}
@@ -134,22 +145,23 @@ with open('report.txt', 'w') as f:
 		f.write('In band {C}_amplicon{D}, {A} out of {B} are matched to bulk\n'.format(A = match_count[band+'_amplicon'+amplicon_number], B = len(d[band+'_amplicon'+amplicon_number]), C = band,D = amplicon_number))
 
 ######################################################################## Finding Path
-os.system('mkdir beds')
+if not os.path.exists('beds'):
+	os.mkdir('beds')
 for amplicon_number in amplicon_mapping:
 	find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length}".format(script = '$PreAA/scripts/plausible_paths.py', graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt', max_length=band_size)
-	os.system(find_path_cmd)
+	call(find_path_cmd,shell=True)
 	print(find_path_cmd)
-	generate_cnd_cmd = 'python3 '+ generate_cnd_dir + ' -i {input} -o {output}'.format(input =cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt', output = 'beds/'+cell_line + '_' + band+'_amplicon'+amplicon_number )
+	generate_cnd_cmd = 'python3 '+ '$PFGE/utils/generate_cnv.py' + ' -i {input} -o {output}'.format(input =cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt', output = 'beds/'+cell_line + '_' + band+'_amplicon'+amplicon_number )
 	print(generate_cnd_cmd)
-	os.system(generate_cnd_cmd)
+	call(generate_cnd_cmd,shell=True)
 
 ######################################################################## visualization
 extract_bedgraph_cmd = 'python3 {extract_bedgraph} --bed {bed} --bam {bam} -o {out}'.format(extract_bedgraph = '$CV_SRC/extract_bedgraph.py' , bed = amplicon_bed_file , bam = cell_line + '_' + band+'.cs.rmdup.bam',out = cell_line+'_'+band)
 print(extract_bedgraph_cmd)
-os.system(extract_bedgraph_cmd)
-band_norm_cmd = 'python3 {band_norm} -i {band_cov} -o {out}'.format(band_norm = band_norm_dir , band_cov =cell_line+'_'+band+'_position_coverage.bedgraph', out = cell_line+'_'+band+'_norm.bed' )
+call(extract_bedgraph_cmd,shell=True)
+band_norm_cmd = 'python3 {band_norm} -i {band_cov} -o {out}'.format(band_norm = '$PFGE/utils/band_norm.py' , band_cov =cell_line+'_'+band+'_position_coverage.bedgraph', out = cell_line+'_'+band+'_norm.bed' )
 print(band_norm_cmd)
-os.system(band_norm_cmd)
+call(band_norm_cmd,shell=True)
 
 bed_list = os.listdir('beds/')
 for i in bed_list:
@@ -163,4 +175,4 @@ for i in bed_list:
 			yaml = cell_line+'_'+band+'_cycle'+cycle_number+'.yaml',
 			output = cell_line+'_'+band+'_amplicon'+amplicon_number+'_cycle'+cycle_number)
 		print(cycle_vis_cmd) 
-		os.system(cycle_vis_cmd)
+		call(cycle_vis_cmd,shell=True)
