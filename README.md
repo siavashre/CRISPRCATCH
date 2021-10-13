@@ -18,4 +18,20 @@ After installing prerequisites, please clone the PFGE repo consider running the 
         echo export PFGE=$PWD >> ~/.bashrc
         source ~/.bashrc
 ## Usage
-For running this tool, 
+PFGE takes as an input sequence data comes from PFGE experiment for a band. Sequence data in `.fastq` format, expected length of band and outputed best candidates structure for band's structure. 
+
+### Command line arguments
+- `-f1` Path to band_r1.fastq file
+- `-f2` Path to band_r2.fastq file
+- `-b` Analyzed band label name
+- `-sname` Analyzed Cell-line name
+- `-o` Output folder directory for saving results
+- `-t` Number of threads
+- `-r` Reference genome version. It can be hg19 or hg38.
+- `-bulk` Path to the AA breakpoint graph file for bulk cell-line
+- `-l` Maximum estimated length for structure.
+- `-bed` bed file that spcifying amplicon region. It is not required field, PFGE can generate this from AA breakpoint graph file on bulk. 
+
+example command: 
+`python3 wrapper.py -f1 /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/SNU16_i_R1.fastq -f2 /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/SNU16_i_R2.fastq -b i -sname SNU16 -o /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/test3/ -t 10 -r hg19 -bulk /nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom1/SNU16_STOMACH_AA_amplicon11_graph.txt -l 1810`
+
