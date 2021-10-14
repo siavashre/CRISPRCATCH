@@ -30,7 +30,7 @@ PFGE takes as an input sequence data comes from PFGE experiment for a band. Sequ
 - `-t` Number of threads
 - `-r` Reference genome version. It can be hg19 or hg38.
 - `-bulk` Path to the AA breakpoint graph file for bulk cell-line
-- `-l` Maximum estimated length for structure.
+- `-l` Maximum estimated length for structure in terms of Kbp. 
 - `-bed` bed file that spcifying amplicon region. It is not required field, PFGE can generate this from AA breakpoint graph file on bulk. 
 
 example command: 
