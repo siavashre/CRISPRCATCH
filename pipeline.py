@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 import pandas as pd
+import csv
 #####	Helper Functions ###########
 class Discordant_edge:
 	chr1 = ''
@@ -75,6 +76,42 @@ def contain_discordant(file):
 				return True
 	return False
 
+def parse_cycle(file_dir,band , amplicon_number,band_max_length):
+	rows = []
+	percent_breakpoints_matched = float(match_count[band+'_amplicon'+amplicon_number]) /len(d[band+'_amplicon'+amplicon_number])
+	with open(file_dir,'r') as f:
+		for line in f:
+			if line.startswith('Cycle'):
+				line = line.strip().split(';')
+				cycle_number = line[0].split('=')[1]
+				if line[3].split('=')[1].startswith('0'):
+					cyclic = 'False'
+				else:
+					cyclic = 'True'
+				reconstruct_length = line[4].split('=')[1]
+				RMSR = line[5].split('=')[1]
+				DBI = line[6].split('=')[1]
+				Filter = line[7].split('=')[1]
+				rows.append([band, cycle_number,str(int(band_max_length))+'Kbp', amplicon_number,reconstruct_length,percent_breakpoints_matched,DBI,RMSR,Filter,cyclic])
+
+	return rows			
+
+
+
+
+def quality_report():
+	header = ['band','cycle_number', 'band_max_length', 'AA_amplicon_id', 'reconstruction_length', 'percent_breakpoints_matched', 'DBI', 'RMSR', 'FILTER','has_cycle']
+	with open('report.csv', 'w') as csv_file:
+		csvwriter = csv.writer(csv_file)
+		csvwriter.writerow(header)
+		files = os.listdir('candidate_cycles/')
+		for f in files:
+			if f.endswith('candidate_cycles.txt'):
+				file_dir = 'candidate_cycles/'+f
+				band = f.split('_')[1]
+				amplicon_number = f.split('_')[2][8:]
+				band_max_length = band_size[band]
+				csvwriter.writerows(parse_cycle(file_dir, band, amplicon_number,band_max_length))
 
 #################################################
 fastq_folder = '/nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/'
@@ -211,7 +248,7 @@ for b in band_list:
 		generate_cnd_cmd = 'python3 '+ generate_cnd_dir + ' -i {input} -o {output}'.format(input ='candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt', output = 'candidate_cycles/beds/'+cell_line + '_' + b+'_amplicon'+amplicon_number )
 		print(generate_cnd_cmd)
 		os.system(generate_cnd_cmd)
-
+quality_report()
 ######################################################################## visualization
 for b in band_list:
 	samtools_cmd = 'samtools depth -b {cnv} {bam} > {out}'.format(cnv = amplicon_bed_file , bam = cell_line + '_' + b+'.cs.rmdup.bam' , out = 'band_cov/'+cell_line+'_'+b+'.cov')
