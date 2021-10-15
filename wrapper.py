@@ -77,7 +77,7 @@ def run_AA(f1,f2,ref_v):
 	print(amplified_amplicon_cmd)
 	call(amplified_amplicon_cmd,shell=True)
 	bam_file = name+'.cs.rmdup.bam'
-	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min 3 --no_cstats --insert_sdevs 8.5".format(out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
+	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min {min_sup} --no_cstats --insert_sdevs {sdv}".format(sdv = sdv, min_sup = min_sup ,out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
 	print(AA_cmd)
 	call(AA_cmd,shell=True)
 
@@ -146,6 +146,14 @@ def run_visualization():
 				output = cell_line+'_'+band+'_amplicon'+amplicon_number+'_cycle'+cycle_number)
 			print(cycle_vis_cmd) 
 			call(cycle_vis_cmd,shell=True)
+def isfloat(value):
+  try:
+    float(value)
+    return True
+  except ValueError:
+    return False
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f1", "--fastq1", help="fastq file 1", required=True)
@@ -158,11 +166,21 @@ parser.add_argument("-r", "--ref", help="Reference genome version", required=Tru
 parser.add_argument("-bulk", "--bulk", help="AA breakpoint graph file for bulk cell line", required=True)
 parser.add_argument("-l", "--length", help="Maximum estimated length for this band", required=True)
 parser.add_argument("-bed", "--bed", help="bed file describing amplicon region", required=False)
+parser.add_argument("-sdv", "--sdv", help="bed file describing amplicon region", required=False)
+parser.add_argument("-min_sup", "--min_sup", help="bed file describing amplicon region", required=False)
 args = parser.parse_args()
 
 
 T = 101 #Comparing discordant edges
 band_size = int(args.length)
+min_sup = 3
+sdv = 8.5
+
+if isfloat(args.sdv):
+    sdv = float(arg.sdv)
+if isfloat(args.min_sup):
+    min_sup = float(args.min_sup)
+    
 band = args.band
 cell_line = args.sname
 if not os.path.exists(args.output):
