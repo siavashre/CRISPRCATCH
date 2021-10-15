@@ -173,7 +173,7 @@ args = parser.parse_args()
 
 T = 101 #Comparing discordant edges
 band_size = int(args.length)
-min_sup = 3
+min_sup = 2
 sdv = 8.5
 
 if isfloat(args.sdv):
