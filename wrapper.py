@@ -80,6 +80,11 @@ def run_AA(f1,f2,ref_v):
 	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min {min_sup} --no_cstats --insert_sdevs {sdv}".format(sdv = sdv, min_sup = min_sup ,out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
 	print(AA_cmd)
 	call(AA_cmd,shell=True)
+    insert_size_txt = name + '_AA_results/insert_size.txt'
+    insert_size_pdf= name + '_AA_results/insert_size.pdf'
+    insert_size_cmd = "java -jar $PICARD/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
+    print(insert_size_cmd)
+    call(insert_size_cmd, shell=True)
 
 def generated_amplicon_bed_file():
 	generate_bed_cmd = 'python2 {grah_to_bed} -g {graph} --unmerged'.format(grah_to_bed ='$PreAA/scripts/graph_to_bed.py', graph = args.bulk )
