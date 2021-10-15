@@ -32,6 +32,8 @@ PFGE takes as an input sequence data comes from PFGE experiment for a band. Sequ
 - `-bulk` Path to the AA breakpoint graph file for bulk cell-line
 - `-l` Maximum estimated length for structure in terms of Kbp. 
 - `-bed` bed file that spcifying amplicon region. It is not required field, PFGE can generate this from AA breakpoint graph file on bulk. 
+- `-min_sup` specifying minimum number of reads for calling a breakpoint. Default value is 2. If you have high coverage data please set it to 4.
+- `-sdv` specifying insert_size sdv for filtering reads for calling breakpoints. Default value is 8.5.
 
 example command: 
 `python3 wrapper.py -f1 /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/SNU16_i_R1.fastq -f2 /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/SNU16_i_R2.fastq -b i -sname SNU16 -o /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/test3/ -t 10 -r hg19 -bulk /nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom1/SNU16_STOMACH_AA_amplicon11_graph.txt -l 1810`
