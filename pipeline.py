@@ -140,6 +140,8 @@ extract_bedgraph_dir = '/home/sraeisid/libraries/CycleViz/extract_bedgraph.py'
 estimated_table_size = '/nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom6_max_len/exp0065_3_estimated_band_sizes_PFGE.csv'
 thread = 24
 T = 101
+min_pair_support = 2
+insert_sdevs = 8.5
 ########################################
 
 
@@ -169,7 +171,7 @@ for band in band_list:
 	insert_size_cmd = "java -jar /home/sraeisid/libraries/picard/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
 	print(insert_size_cmd)
 	os.system(insert_size_cmd)
-	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min 2 --no_cstats --insert_sdevs 8.5".format(out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
+	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min {min_sup} --no_cstats --insert_sdevs {sdev}".format(min_sup =min_pair_support ,sdev =insert_sdevs ,out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
 	print(AA_cmd)
 	os.system(AA_cmd)
 	######## Updating Amplicon Mapping #################################
