@@ -20,12 +20,21 @@ def parse_csv(file):
 	bands = list(a['band'])
 	max_len = list(a['estimated_band_size_max_kb'])
 	min_len = list(a['estimated_band_size_min_kb'])
-	d = {}
+	guide_start = list(a['guide_start'])
+	guide_end = list(a['guide_end'])
+	guide_chr = list(a['guide_chr'])
+	d_max = {}
+	d_min = {}
+	d_guids = {}
 	for i in range(len(bands)):
-		d[bands[i]] = max_len[i]
+		d_max[bands[i]] = max_len[i]
 		if pd.isna(max_len[i]):
-			d[bands[i]] = min_len[i]
-	return d 
+			d_max[bands[i]] = min_len[i]
+		d_min[bands[i]] = min_len[i]
+		if pd.isna(min_len[i]):
+			d_min[bands[i]] = max_len[i]
+		d_guids[bands[i]] = (guide_chr[i], guide_start[i], guide_end[i])
+	return d_max, d_min, d_guids
 
 def parsing_AA_graph(graph_dir):
 	l = []
@@ -76,14 +85,32 @@ def contain_discordant(file):
 				return True
 	return False
 
-def parse_cycle(file_dir,band , amplicon_number,band_max_length):
+def parse_cycle(file_dir,band , amplicon_number,band_max_length,band_min_length):
 	rows = []
 	percent_breakpoints_matched = float(match_count[band+'_amplicon'+amplicon_number]) /len(d[band+'_amplicon'+amplicon_number])
+	segments = {}
 	with open(file_dir,'r') as f:
 		for line in f:
-			if line.startswith('Cycle'):
+			if line.startswith('Segment'):
+				line = line.strip().split('\t')
+				seg_id = int(line[1])
+				seg_chr = line[2]
+				seg_start = int(line[3])
+				seg_end = int(line[4])
+				segments[seg_id] = (seg_chr, seg_start, seg_end)
+			elif line.startswith('Cycle'):
 				line = line.strip().split(';')
+				in_cut_site = False
 				cycle_number = line[0].split('=')[1]
+				rec_path = line[3].split('=')[1].split(',')
+				for seg in rec_path:
+					seg = int(seg[:-1])
+					if seg != 0:
+						if segments[seg][0] == guids[band][0]:
+							if segments[seg][1]-21 <guids[band][1]< segments[seg][2]+21:
+								if segments[seg][1]-21 <guids[band][2]< segments[seg][2]+21:
+									in_cut_site= True
+									break
 				if line[3].split('=')[1].startswith('0'):
 					cyclic = 'False'
 				else:
@@ -92,26 +119,30 @@ def parse_cycle(file_dir,band , amplicon_number,band_max_length):
 				RMSR = line[5].split('=')[1]
 				DBI = line[6].split('=')[1]
 				Filter = line[7].split('=')[1]
-				rows.append([band, cycle_number,str(int(band_max_length))+'Kbp', amplicon_number,reconstruct_length,percent_breakpoints_matched,DBI,RMSR,Filter,cyclic])
-
+				rows.append([band, cycle_number,str(int(band_min_length))+'Kbp',str(int(band_max_length))+'Kbp', amplicon_number,reconstruct_length,percent_breakpoints_matched,DBI,RMSR,Filter,cyclic,in_cut_site])
 	return rows			
 
 
 
 
 def quality_report():
-	header = ['band','cycle_number', 'band_max_length', 'AA_amplicon_id', 'reconstruction_length', 'percent_breakpoints_matched', 'DBI', 'RMSR', 'FILTER','has_cycle']
+	header = ['band','cycle_number', 'band_min_length','band_max_length', 'AA_amplicon_id', 'reconstruction_length', 'percent_breakpoints_matched', 'DBI', 'RMSR', 'FILTER','has_cycle', 'in_cut_site']
 	with open('report.csv', 'w') as csv_file:
 		csvwriter = csv.writer(csv_file)
 		csvwriter.writerow(header)
 		files = os.listdir('candidate_cycles/')
+		lines = []
 		for f in files:
 			if f.endswith('candidate_cycles.txt'):
 				file_dir = 'candidate_cycles/'+f
 				band = f.split('_')[1]
 				amplicon_number = f.split('_')[2][8:]
-				band_max_length = band_size[band]
-				csvwriter.writerows(parse_cycle(file_dir, band, amplicon_number,band_max_length))
+				band_max_length = band_size_max[band]
+				band_min_length = band_size_min[band]
+				lines.extend(parse_cycle(file_dir, band, amplicon_number,band_max_length,band_min_length))
+		lines = sorted(lines, key = lambda x:(x[0],x[1]) )
+		csvwriter.writerows(lines)
+				# csvwriter.writerows(parse_cycle(file_dir, band, amplicon_number,band_max_length,band_min_length))
 
 #################################################
 fastq_folder = '/nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/'
@@ -150,7 +181,7 @@ new_dir_cmd = 'mkdir graph_files'
 os.system(new_dir_cmd)
 fil_dir_cmd = 'mkdir filtered_graph_files'
 os.system(fil_dir_cmd)
-band_size = parse_csv(estimated_table_size)
+band_size_max, band_size_min, guids = parse_csv(estimated_table_size)
 # '''
 for band in band_list:
 	name = cell_line + '_' + band
@@ -214,12 +245,8 @@ for b in band_list:
 			with open ('filtered_graph_files/' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt', 'w') as g:
 				for line in f :
 					g.write(line)
-				# 	if not line.startswith('discordant'):
-				# 		g.write(line)
-				# for discordant in d[b]:
-				# 	if discordant.in_bulk==1 or discordant.count > 3:
-				# 		g.write(discordant.line)
-with open('report.txt', 'w') as f:
+
+with open('edge_comparison.txt', 'w') as f:
 	for b in band_list:
 		for amplicon_number in amplicon_mapping[b]:
 			f.write('In band {C}_amplicon{D}, {A} out of {B} are matched to bulk\n'.format(A = match_count[b+'_amplicon'+amplicon_number], B = len(d[b+'_amplicon'+amplicon_number]), C = b,D = amplicon_number))
@@ -232,21 +259,12 @@ os.system('mkdir candidate_cycles/visualization')
 os.system('mkdir band_cov')
 for b in band_list:
 	for amplicon_number in amplicon_mapping[b]:
-		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length}".format(script = find_path_script_dir, graph = 'filtered_graph_files/' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt', max_length=band_size[b])
+		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = find_path_script_dir, graph = 'filtered_graph_files/' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt', max_length=band_size_max[b],min_length = band_size_min[b])
 		os.system(find_path_cmd)
 		print(find_path_cmd)
 		move_cmd = 'mv ' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt candidate_cycles/.' 
 		os.system(move_cmd)
 		print(move_cmd)
-		# calculate_len_cmd = 'python3 '+ calculate_len_dir +' -i {graph} -o {output}'.format(graph ='candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt', output = 'candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles_len.txt' )
-		# os.system(calculate_len_cmd)
-		# print(calculate_len_cmd)
-		# simplify_cycle_cmd = 'python3 {script} -i {graph} -o {output}'.format(script = simplify_cycle_dir , graph ='candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt', output = 'candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles_sim.txt')
-		# os.system(simplify_cycle_cmd)
-		# print(simplify_cycle_cmd)
-		# convert_cycles_cmd = 'python3 {script} -i {graph} -o {output}'.format(script = convert_cycles_dir , graph ='candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles_sim.txt', output = 'candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cycles.txt')
-		# os.system(convert_cycles_cmd)
-		# print(convert_cycles_cmd)
 		generate_cnd_cmd = 'python3 '+ generate_cnd_dir + ' -i {input} -o {output}'.format(input ='candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt', output = 'candidate_cycles/beds/'+cell_line + '_' + b+'_amplicon'+amplicon_number )
 		print(generate_cnd_cmd)
 		os.system(generate_cnd_cmd)
@@ -282,12 +300,3 @@ for i in bed_list:
 		print(cycle_vis_cmd) 
 		os.system(cycle_vis_cmd)
 
-
-
-# bed_list = os.listdir('candidate_cycles/beds/')
-# for i in bed_list:
-# 	if i.startswith(cell_line):
-# 		name = i.split('_')[0]+'_'+i.split('_')[1]
-# 		vis_cmd = 'python3 ' + vis_dir + ' -c {cov} -i {input} -o {output}'.format(input ='candidate_cycles/beds/'+i, output='candidate_cycles/visualization/'+i[:-4],cov ='band_cov/'+name+'_norm.bed' )
-# 		print(vis_cmd)
-# 		os.system(vis_cmd)
