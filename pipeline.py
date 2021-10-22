@@ -119,14 +119,24 @@ def parse_cycle(file_dir,band , amplicon_number,band_max_length,band_min_length)
 				RMSR = line[5].split('=')[1]
 				DBI = line[6].split('=')[1]
 				Filter = line[7].split('=')[1]
-				rows.append([band, cycle_number,str(int(band_min_length))+'Kbp',str(int(band_max_length))+'Kbp', amplicon_number,reconstruct_length,percent_breakpoints_matched,DBI,RMSR,Filter,cyclic,in_cut_site])
+				rows.append([band, cycle_number,str(int(band_min_length))+'Kbp',str(int(band_max_length))+'Kbp', amplicon_number,reconstruct_length,percent_breakpoints_matched,DBI,RMSR,Filter,cyclic,in_cut_site, band_insert_size_mean[band], band_insert_size_std[band]])
 	return rows			
 
-
-
+def parse_insert_size(file_dir):
+	with open(file_dir,'r') as f:
+		lines = f.readlines()
+		for i in range(len(lines)):
+			line = lines[i]
+			if line.startswith('## METRICS'):
+				line = lines[i+1]
+				line = line.strip().split('\t')
+				inset_mean = float(line[5]) 
+				inset_std = float(line[6])
+				return inset_mean, inset_std
+	return 0 , 0
 
 def quality_report():
-	header = ['band','cycle_number', 'band_min_length','band_max_length', 'AA_amplicon_id', 'reconstruction_length', 'percent_breakpoints_matched', 'DBI', 'RMSR', 'FILTER','has_cycle', 'in_cut_site']
+	header = ['band','cycle_number', 'band_min_length','band_max_length', 'AA_amplicon_id', 'reconstruction_length', 'percent_breakpoints_matched', 'DBI', 'RMSR', 'FILTER','has_cycle', 'includes cut site', 'insert_size mean', 'insert_size stdev']
 	with open('report.csv', 'w') as csv_file:
 		csvwriter = csv.writer(csv_file)
 		csvwriter.writerow(header)
@@ -182,6 +192,8 @@ os.system(new_dir_cmd)
 fil_dir_cmd = 'mkdir filtered_graph_files'
 os.system(fil_dir_cmd)
 band_size_max, band_size_min, guids = parse_csv(estimated_table_size)
+band_insert_size_mean = {}
+band_insert_size_std = {}
 # '''
 for band in band_list:
 	name = cell_line + '_' + band
@@ -202,6 +214,9 @@ for band in band_list:
 	insert_size_cmd = "java -jar /home/sraeisid/libraries/picard/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
 	print(insert_size_cmd)
 	os.system(insert_size_cmd)
+	i_mean, i_std = parse_insert_size(insert_size_txt)
+	band_insert_size_mean[band] = i_mean
+	band_insert_size_std = i_std
 	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min {min_sup} --no_cstats --insert_sdevs {sdev}".format(min_sup =min_pair_support ,sdev =insert_sdevs ,out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
 	print(AA_cmd)
 	os.system(AA_cmd)
