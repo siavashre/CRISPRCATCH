@@ -128,7 +128,7 @@ def parse_insert_size(file_dir):
 		for i in range(len(lines)):
 			line = lines[i]
 			if line.startswith('## METRICS'):
-				line = lines[i+1]
+				line = lines[i+2]
 				line = line.strip().split('\t')
 				inset_mean = float(line[5]) 
 				inset_std = float(line[6])
@@ -216,7 +216,7 @@ for band in band_list:
 	os.system(insert_size_cmd)
 	i_mean, i_std = parse_insert_size(insert_size_txt)
 	band_insert_size_mean[band] = i_mean
-	band_insert_size_std = i_std
+	band_insert_size_std[band] = i_std
 	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min {min_sup} --no_cstats --insert_sdevs {sdev}".format(min_sup =min_pair_support ,sdev =insert_sdevs ,out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
 	print(AA_cmd)
 	os.system(AA_cmd)
