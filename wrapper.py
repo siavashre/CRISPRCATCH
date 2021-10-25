@@ -2,6 +2,7 @@ import os
 from collections import defaultdict
 import argparse
 from subprocess import call
+import csv
 import sys
 
 class Discordant_edge:
@@ -33,7 +34,7 @@ def parsing_AA_graph(graph_dir):
 				d.cp = float(line[2])
 				d.line = line2
 				l.append(d)
-	return l 
+	return l
 
 def compare_discordants(a,b):
 	if a.chr1 == b.chr1 and a.chr2 == b.chr2 and a.dir2 == b.dir2 and a.dir1 == b.dir1 and abs(a.pos1 - b.pos1) < T and abs(a.pos2 - b.pos2) < T:
@@ -100,8 +101,8 @@ def parse_cycle(file_dir,band , amplicon_number,band_max_length,band_min_length)
 				RMSR = line[5].split('=')[1]
 				DBI = line[6].split('=')[1]
 				Filter = line[7].split('=')[1]
-				rows.append([band, cycle_number,str(int(band_min_length))+'Kbp',str(int(band_max_length))+'Kbp', amplicon_number,reconstruct_length,percent_breakpoints_matched,DBI,RMSR,Filter,cyclic,in_cut_site, band_insert_size_mean[band], band_insert_size_std[band]])
-	return rows	
+				rows.append([band, cycle_number,str(int(band_min_length))+'Kbp',str(int(band_max_length))+'Kbp', amplicon_number,reconstruct_length,percent_breakpoints_matched,DBI,RMSR,Filter,cyclic,in_cut_site, i_mean, i_std])
+	return rows
 
 def parse_insert_size(file_dir):
 	with open(file_dir,'r') as f:
@@ -111,7 +112,7 @@ def parse_insert_size(file_dir):
 			if line.startswith('## METRICS'):
 				line = lines[i+2]
 				line = line.strip().split('\t')
-				inset_mean = float(line[5]) 
+				inset_mean = float(line[5])
 				inset_std = float(line[6])
 				return inset_mean, inset_std
 	return 0 , 0
@@ -149,15 +150,15 @@ def run_AA(f1,f2,ref_v):
 	print(AA_cmd)
 	call(AA_cmd,shell=True)
 	insert_size_txt = name + '_AA_results/insert_size.txt'
-  insert_size_pdf = name + '_AA_results/insert_size.pdf'
-  insert_size_cmd = "java -jar $PICARD/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
-  print(insert_size_cmd)
-  call(insert_size_cmd, shell=True)
-  i_mean, i_std = parse_insert_size(insert_size_txt)
-  return i_mean, i_std
+	insert_size_pdf = name + '_AA_results/insert_size.pdf'
+	insert_size_cmd = "java -jar $PICARD/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
+	print(insert_size_cmd)
+	call(insert_size_cmd, shell=True)
+	i_mean, i_std = parse_insert_size(insert_size_txt)
+	return i_mean, i_std
 
 def generated_amplicon_bed_file():
-	generate_bed_cmd = 'python2 {grah_to_bed} -g {graph} --unmerged'.format(grah_to_bed ='$PreAA/scripts/graph_to_bed.py', graph = args.bulk )
+	generate_bed_cmd = 'python3 {grah_to_bed} -g {graph} --unmerged'.format(grah_to_bed ='$PreAA/scripts/graph_to_bed.py', graph = args.bulk )
 	print(generate_bed_cmd)
 	call(generate_bed_cmd,shell=True)
 
@@ -174,8 +175,8 @@ def detecting_amplion_numbers():
 def run_graph_cleaner():
 	for amplicon_number in amplicon_mapping:
 		clean_cmd = "python2 $PreAA/scripts/graph_cleaner.py" + " -g "+ name + "_AA_results/" + name + "_amplicon"+amplicon_number+"_graph.txt " + "--filter_non_everted --max_hop_size 1000 --max_hop_support 999999"
-		print(clean_cmd) 
-		call(clean_cmd)
+		print(clean_cmd)
+		call(clean_cmd,shell=True)
 
 def compare_bulk_band_report():
 	bulk = parsing_AA_graph(args.bulk)
@@ -184,7 +185,7 @@ def compare_bulk_band_report():
 	for amplicon_number in amplicon_mapping:
 		d[band+'_amplicon'+amplicon_number] = parsing_AA_graph(cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt')
 		d[band+'_amplicon'+amplicon_number], match_count[band+'_amplicon'+amplicon_number] =  compare_bulk_band(bulk, d[band+'_amplicon'+amplicon_number])
-	with open('report.txt', 'w') as f:
+	with open('edge_comparison.txt', 'w') as f:
 		for amplicon_number in amplicon_mapping:
 			f.write('In band {C}_amplicon{D}, {A} out of {B} are matched to bulk\n'.format(A = match_count[band+'_amplicon'+amplicon_number], B = len(d[band+'_amplicon'+amplicon_number]), C = band,D = amplicon_number))
 	return d , match_count
@@ -216,11 +217,11 @@ def run_visualization():
 			amplicon_number = i.split('_')[2][8:]
 			write_yml(cell_line+'_'+band+'_cycle'+cycle_number, cell_line+'_'+band+'_norm.bed')
 			cycle_vis_cmd = 'python2 {cycle_viz} --cycles_file {cycle_file} --cycle {cycle} --graph {graph} --ref hg19 --rotate_to_min --feature_yaml_list {yaml} --label_segs numbers --center_hole 5 --feature_ref_offset 1.5 --noPDF -o {output}'.format(
-				cycle_viz ='$CV_SRC/CycleViz.py' , cycle_file = cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt' , 
+				cycle_viz ='$CV_SRC/CycleViz.py' , cycle_file = cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt' ,
 				cycle = cycle_number, graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt',
 				yaml = cell_line+'_'+band+'_cycle'+cycle_number+'.yaml',
 				output = cell_line+'_'+band+'_amplicon'+amplicon_number+'_cycle'+cycle_number)
-			print(cycle_vis_cmd) 
+			print(cycle_vis_cmd)
 			call(cycle_vis_cmd,shell=True)
 
 def isfloat(value):
@@ -259,15 +260,15 @@ min_sup = 2
 sdv = 8.5
 
 if isfloat(args.sdv):
-    sdv = float(arg.sdv)
+    sdv = float(args.sdv)
 if isfloat(args.min_sup):
-    min_sup = float(args.min_sup)
-    
+    min_sup = int(args.min_sup)
+
 band = args.band
 cell_line = args.sname
 if not os.path.exists(args.output):
 	print('Output folder does not exist')
-	sys.exit(0) 
+	sys.exit(0)
 os.chdir(args.output)
 name = cell_line + '_' + band
 if not args.bed:
