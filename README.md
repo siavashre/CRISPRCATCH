@@ -31,7 +31,11 @@ PFGE takes as an input sequence data comes from PFGE experiment for a band. Sequ
 - `-t` Number of threads
 - `-r` Reference genome version. It can be hg19 or hg38.
 - `-bulk` Path to the AA breakpoint graph file for bulk cell-line
-- `-l` Maximum estimated length for structure in terms of Kbp. 
+- `-lmax` Maximum estimated length for structure in terms of Kbp. 
+- `-lmin` Minimum estimated length for structure in terms of Kbp. 
+- `-chr` Chromosome of target cite. Please write 'chr' + chromosome number.
+- `-g_start` Target cite starting position in bp.
+- `-g_end` Target cite ending position in bp.
 - `-bed` bed file that spcifying amplicon region. It is not required field, PFGE can generate this from AA breakpoint graph file on bulk. 
 - `-min_sup` specifying minimum number of reads for calling a breakpoint. Default value is 2. If you have high coverage data please set it to 4.
 - `-sdv` specifying insert_size sdv for filtering reads for calling breakpoints. Default value is 8.5.
