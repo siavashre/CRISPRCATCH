@@ -66,8 +66,76 @@ def contain_discordant(file):
 				return True
 	return False
 
+def parse_cycle(file_dir,band , amplicon_number,band_max_length,band_min_length):
+	rows = []
+	percent_breakpoints_matched = float(match_count[band+'_amplicon'+amplicon_number]) /len(d[band+'_amplicon'+amplicon_number])
+	segments = {}
+	with open(file_dir,'r') as f:
+		for line in f:
+			if line.startswith('Segment'):
+				line = line.strip().split('\t')
+				seg_id = int(line[1])
+				seg_chr = line[2]
+				seg_start = int(line[3])
+				seg_end = int(line[4])
+				segments[seg_id] = (seg_chr, seg_start, seg_end)
+			elif line.startswith('Cycle'):
+				line = line.strip().split(';')
+				in_cut_site = False
+				cycle_number = line[0].split('=')[1]
+				rec_path = line[3].split('=')[1].split(',')
+				for seg in rec_path:
+					seg = int(seg[:-1])
+					if seg != 0:
+						if segments[seg][0] == args.chr:
+							if segments[seg][1]-21 < int(args.g_start) < segments[seg][2]+21:
+								if segments[seg][1]-21 < int(args.g_end) < segments[seg][2]+21:
+									in_cut_site= True
+									break
+				if line[3].split('=')[1].startswith('0'):
+					cyclic = 'False'
+				else:
+					cyclic = 'True'
+				reconstruct_length = line[4].split('=')[1]
+				RMSR = line[5].split('=')[1]
+				DBI = line[6].split('=')[1]
+				Filter = line[7].split('=')[1]
+				rows.append([band, cycle_number,str(int(band_min_length))+'Kbp',str(int(band_max_length))+'Kbp', amplicon_number,reconstruct_length,percent_breakpoints_matched,DBI,RMSR,Filter,cyclic,in_cut_site, band_insert_size_mean[band], band_insert_size_std[band]])
+	return rows	
+
+def parse_insert_size(file_dir):
+	with open(file_dir,'r') as f:
+		lines = f.readlines()
+		for i in range(len(lines)):
+			line = lines[i]
+			if line.startswith('## METRICS'):
+				line = lines[i+2]
+				line = line.strip().split('\t')
+				inset_mean = float(line[5]) 
+				inset_std = float(line[6])
+				return inset_mean, inset_std
+	return 0 , 0
+
+def quality_report(band):
+	header = ['band','cycle_number', 'band_min_length','band_max_length', 'AA_amplicon_id', 'reconstruction_length', 'percent_breakpoints_matched', 'DBI', 'RMSR', 'FILTER','has_cycle', 'includes cut site', 'insert_size mean', 'insert_size stdev']
+	with open('report_'+str(band)+'.csv', 'w') as csv_file:
+		csvwriter = csv.writer(csv_file)
+		csvwriter.writerow(header)
+		files = os.listdir(args.output)
+		lines = []
+		for f in files:
+			if f.endswith('candidate_cycles.txt'):
+				file_dir = f
+				amplicon_number = f.split('_')[2][8:]
+				band_max_length = band_size_max
+				band_min_length = band_size_min
+				lines.extend(parse_cycle(file_dir, band, amplicon_number,band_max_length,band_min_length))
+		lines = sorted(lines, key = lambda x:(x[0],x[1]) )
+		csvwriter.writerows(lines)
+
+
 def run_AA(f1,f2,ref_v):
-	Pre_AA_cmd = "python3 {PrepareAA} --ref {ref_v} -t {thread} --use_old_samtools -s {name} --fastqs {f1} {f2} --no_filter --cngain 0 --cnsize_min 0 --cnv_bed {amplicon_bed_file} ".format(
+	Pre_AA_cmd = "python3 {PrepareAA} --ref {ref_v} -t {thread} -s {name} --fastqs {f1} {f2} --no_filter --cngain 0 --cnsize_min 0 --cnv_bed {amplicon_bed_file} ".format(
 	PrepareAA = "$PreAA/PrepareAA.py" , ref_v= ref_v, thread = args.t, name = name , f1 = f1 , f2 = f2, amplicon_bed_file = amplicon_bed_file)
 	print(Pre_AA_cmd)
 	call(Pre_AA_cmd,shell=True)
@@ -80,11 +148,13 @@ def run_AA(f1,f2,ref_v):
 	AA_cmd = "$AA_SRC/AmpliconArchitect.py --out {out} --downsample -1 --bed {bed} --bam {bam} --ref hg19 --pair_support_min {min_sup} --no_cstats --insert_sdevs {sdv}".format(sdv = sdv, min_sup = min_sup ,out =name+'_AA_results/'+name,bed =name+'_AA_CNV_SEEDS.bed',bam = name + '.cs.rmdup.bam')
 	print(AA_cmd)
 	call(AA_cmd,shell=True)
-    insert_size_txt = name + '_AA_results/insert_size.txt'
-    insert_size_pdf= name + '_AA_results/insert_size.pdf'
-    insert_size_cmd = "java -jar $PICARD/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
-    print(insert_size_cmd)
-    call(insert_size_cmd, shell=True)
+	insert_size_txt = name + '_AA_results/insert_size.txt'
+  insert_size_pdf = name + '_AA_results/insert_size.pdf'
+  insert_size_cmd = "java -jar $PICARD/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
+  print(insert_size_cmd)
+  call(insert_size_cmd, shell=True)
+  i_mean, i_std = parse_insert_size(insert_size_txt)
+  return i_mean, i_std
 
 def generated_amplicon_bed_file():
 	generate_bed_cmd = 'python2 {grah_to_bed} -g {graph} --unmerged'.format(grah_to_bed ='$PreAA/scripts/graph_to_bed.py', graph = args.bulk )
@@ -117,12 +187,13 @@ def compare_bulk_band_report():
 	with open('report.txt', 'w') as f:
 		for amplicon_number in amplicon_mapping:
 			f.write('In band {C}_amplicon{D}, {A} out of {B} are matched to bulk\n'.format(A = match_count[band+'_amplicon'+amplicon_number], B = len(d[band+'_amplicon'+amplicon_number]), C = band,D = amplicon_number))
+	return d , match_count
 
 def run_path_finder():
 	if not os.path.exists('beds'):
 		os.mkdir('beds')
 	for amplicon_number in amplicon_mapping:
-		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length}".format(script = '$PreAA/scripts/plausible_paths.py', graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt', max_length=band_size)
+		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = '$PreAA/scripts/plausible_paths.py', graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt', max_length=band_size_max, min_length = band_size_min)
 		call(find_path_cmd,shell=True)
 		print(find_path_cmd)
 		generate_cnd_cmd = 'python3 '+ '$PFGE/utils/generate_cnv.py' + ' -i {input} -o {output}'.format(input =cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt', output = 'beds/'+cell_line + '_' + band+'_amplicon'+amplicon_number )
@@ -151,6 +222,7 @@ def run_visualization():
 				output = cell_line+'_'+band+'_amplicon'+amplicon_number+'_cycle'+cycle_number)
 			print(cycle_vis_cmd) 
 			call(cycle_vis_cmd,shell=True)
+
 def isfloat(value):
   try:
     float(value)
@@ -169,15 +241,20 @@ parser.add_argument("-o", "--output", help="Output dir for saving results", requ
 parser.add_argument("-t", "--t", help="Number of thread", required=True)
 parser.add_argument("-r", "--ref", help="Reference genome version", required=True)
 parser.add_argument("-bulk", "--bulk", help="AA breakpoint graph file for bulk cell line", required=True)
-parser.add_argument("-l", "--length", help="Maximum estimated length for this band", required=True)
+parser.add_argument("-lmax", "--lmax", help="Maximum estimated length for this band", required=True)
+parser.add_argument("-lmin", "--lmin", help="Minimum estimated length for this band", required=True)
+parser.add_argument("-chr", "--chr", help="Chromosome of target cite", required=True)
+parser.add_argument("-g_start", "--g_start", help="Target cite starting pos", required=True)
+parser.add_argument("-g_end", "--g_end", help="Target cite end pos", required=True)
 parser.add_argument("-bed", "--bed", help="bed file describing amplicon region", required=False)
-parser.add_argument("-sdv", "--sdv", help="bed file describing amplicon region", required=False)
-parser.add_argument("-min_sup", "--min_sup", help="bed file describing amplicon region", required=False)
+parser.add_argument("-sdv", "--sdv", help="insert_sdev for running AA. Default is 8.5", required=False)
+parser.add_argument("-min_sup", "--min_sup", help="Minimum sup pair reads for calling discordant edges. Default is 2", required=False)
 args = parser.parse_args()
 
 
 T = 101 #Comparing discordant edges
-band_size = int(args.length)
+band_size_max = int(float(args.lmax))
+band_size_min = int(float(args.lmin))
 min_sup = 2
 sdv = 8.5
 
@@ -198,11 +275,12 @@ if not args.bed:
 	amplicon_bed_file = args.bulk[args.bulk.rfind('/')+1:args.bulk.rfind('.')]+'.bed'
 else:
 	amplicon_bed_file = args.bed
-run_AA(args.fastq1,args.fastq2,args.ref)
+i_mean, i_std = run_AA(args.fastq1,args.fastq2,args.ref)
 amplicon_mapping = detecting_amplion_numbers()
 run_graph_cleaner()
-compare_bulk_band_report()
+d, match_count =  compare_bulk_band_report()
 run_path_finder()
+quality_report(band)
 detect_coverage()
 run_visualization()
 

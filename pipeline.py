@@ -211,7 +211,7 @@ for band in band_list:
 	bam_file = name+'.cs.rmdup.bam'
 	insert_size_txt = name + '_AA_results/insert_size.txt'
 	insert_size_pdf= name + '_AA_results/insert_size.pdf'
-	insert_size_cmd = "java -jar /home/sraeisid/libraries/picard/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
+	insert_size_cmd = "java -jar $PICARD/picard.jar CollectInsertSizeMetrics I={bam_file} O={insert_size_txt} H={insert_size_pdf} M=0.5".format(bam_file = bam_file , insert_size_txt = insert_size_txt , insert_size_pdf= insert_size_pdf )
 	print(insert_size_cmd)
 	os.system(insert_size_cmd)
 	i_mean, i_std = parse_insert_size(insert_size_txt)
