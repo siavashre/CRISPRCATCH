@@ -1,4 +1,4 @@
-# PFGE
+# CRISPRCATCH
 A tool for analyzing ecDNA structure. It works with data comes from PFGE experiment. 
 
 ## Prerequisites:
