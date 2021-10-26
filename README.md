@@ -41,7 +41,7 @@ PFGE takes as an input sequence data comes from PFGE experiment for a band. Sequ
 - `-sdv` specifying insert_size sdv for filtering reads for calling breakpoints. Default value is 8.5.
 
 example command: 
-`python3 wrapper.py -f1 /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/SNU16_i_R1.fastq -f2 /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/SNU16_i_R2.fastq -b i -sname SNU16 -o /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/test4/ -t 10 -r hg19 -bulk /nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom1/SNU16_STOMACH_AA_amplicon11_graph.txt -lmax 1810 -lmin 1660 -chr chr10 -g_start 123353331 -g_end 123353350 -sdv 8.5 -min_sup 2`
+`python3 wrapper.py -f1 SNU16_i_R1.fastq -f2 SNU16_i_R2.fastq -b i -sname SNU16 -o output/ -t 10 -r hg19 -bulk SNU16_AA_amplicon1_graph.txt -lmax 1810 -lmin 1660 -chr chr10 -g_start 123353331 -g_end 123353350 -sdv 8.5 -min_sup 2`
 
 ## s_wrapper.py
 If you want to run the pipeline for bunch of bands together, you can use 's_wrapper.py'.
@@ -55,7 +55,6 @@ If you want to run the pipeline for bunch of bands together, you can use 's_wrap
 - `-min_sup` specifying minimum number of reads for calling a breakpoint. Default value is 2. If you have high coverage data please set it to 4.
 - `-sdv` specifying insert_size sdv for filtering reads for calling breakpoints. Default value is 8.5.
 - `-csv` specifying a csv file containing bands information. Please take a look at 'example.csv' and fill the information as needed. Please use the absolute path for column read1 and read2.
-- 
 example command: 
-`python3 pipeline.py -csv SNU16_i.csv -sname SNU16 -t 10 -r hg19 -o /nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/test6/ -bulk /nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom1/SNU16_STOMACH_AA_amplicon11_graph.txt -sdv 8.5 -min_sup 2 -bed /nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom1/cnv.bed`
+`python3 pipeline.py -csv SNU16_i.csv -sname SNU16 -t 10 -r hg19 -o output/ -bulk SNU16_AA_amplicon1_graph.txt -sdv 8.5 -min_sup 2 -bed DNU16.bed`
 
