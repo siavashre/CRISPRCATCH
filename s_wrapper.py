@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 import pandas as pd
+import argparse
 import csv
 #####	Helper Functions ###########
 class Discordant_edge:
@@ -18,14 +19,17 @@ class Discordant_edge:
 def parse_csv(file):
 	a = pd.read_csv(file)
 	bands = list(a['band'])
-	max_len = list(a['estimated_band_size_max_kb'])
-	min_len = list(a['estimated_band_size_min_kb'])
+	read1 = list(a['read1'])
+	read2 = list(a['read2'])
+	max_len = list(a['band_max_len'])
+	min_len = list(a['band_min_len'])
 	guide_start = list(a['guide_start'])
 	guide_end = list(a['guide_end'])
 	guide_chr = list(a['guide_chr'])
 	d_max = {}
 	d_min = {}
 	d_guids = {}
+	d_read = {}
 	for i in range(len(bands)):
 		d_max[bands[i]] = max_len[i]
 		if pd.isna(max_len[i]):
@@ -34,7 +38,8 @@ def parse_csv(file):
 		if pd.isna(min_len[i]):
 			d_min[bands[i]] = max_len[i]
 		d_guids[bands[i]] = (guide_chr[i], guide_start[i], guide_end[i])
-	return d_max, d_min, d_guids
+		d_read[bands[i]] = [read1[i], read2[i]]
+	return bands, d_read,d_max, d_min, d_guids
 
 def parsing_AA_graph(graph_dir):
 	l = []
@@ -152,55 +157,68 @@ def quality_report():
 				lines.extend(parse_cycle(file_dir, band, amplicon_number,band_max_length,band_min_length))
 		lines = sorted(lines, key = lambda x:(x[0],x[1]) )
 		csvwriter.writerows(lines)
-				# csvwriter.writerows(parse_cycle(file_dir, band, amplicon_number,band_max_length,band_min_length))
+
+def generated_amplicon_bed_file():
+	generate_bed_cmd = 'python3 {grah_to_bed} -g {graph} --unmerged'.format(grah_to_bed ='$PreAA/scripts/graph_to_bed.py', graph = args.bulk )
+	print(generate_bed_cmd)
+	os.system(generate_bed_cmd)
+
+def isfloat(value):
+  try:
+    float(value)
+    return True
+  except ValueError:
+    return False	
 
 #################################################
-fastq_folder = '/nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/'
-band_list = ['a','b','c','d','e','f','g','h', 'i', 'j', 'k', 'l', 'm','n','o','p', 'q', 'r', 's', 't' , 'u', 'v', 'w']
-# band_list = ['t','v','u','w']
-# band_list = ['b', 'c', 'e', 'f', 'h', 'i', 'k', 'l']
-# band_list = ['c', 'f', 'i', 'l', 'o', 'r']
-amplicon_mapping = defaultdict(list)
-cell_line = 'SNU16'
-output_ans = '/nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/ans_Stom/'
-amplicon_bed_file = '/nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom1/cnv.bed'
-generate_cnd_dir = '/nucleus/projects/sraeisid/AA/scripts/generate_cnv.py'
-PrepareAA_dir ='/home/sraeisid/PrepareAA/PrepareAA.py'
-cleaner_dir = "/home/sraeisid/PrepareAA/scripts/graph_cleaner.py"
-vis_dir = '/nucleus/projects/sraeisid/AA/scripts/visualize_bed.py'
-ref_v = 'hg19'
-bulk_AA_graph_file = '/nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom1/SNU16_STOMACH_AA_amplicon11_graph.txt'
-find_path_script_dir = '/home/sraeisid/PrepareAA/scripts/plausible_paths.py'
-calculate_len_dir = '/nucleus/projects/sraeisid/AA/scripts/calculate_len.py'
-simplify_cycle_dir = '/nucleus/projects/sraeisid/AA/scripts/simpler_cycle.py'
-collapse_cov_dir = '/nucleus/projects/sraeisid/AA/scripts/collapse_cov.pl'
-convert_cycles_dir = '/nucleus/projects/sraeisid/AA/scripts/convert_cycles.py'
-band_norm_dir = '/nucleus/projects/sraeisid/AA/scripts/band_norm.py'
-cycle_viz_dir = '/home/sraeisid/libraries/CycleViz/CycleViz.py'
-extract_bedgraph_dir = '/home/sraeisid/libraries/CycleViz/extract_bedgraph.py'
-estimated_table_size = '/nucleus/projects/sraeisid/AA/SNU16_run4_clean/ans_Stom6_max_len/exp0065_3_estimated_band_sizes_PFGE.csv'
-thread = 24
+parser = argparse.ArgumentParser()
+parser.add_argument("-sname", "--sname", help="Cell Line name", required=True)
+parser.add_argument("-o", "--output", help="Output dir for saving results", required=True)
+parser.add_argument("-t", "--t", help="Number of thread", required=True)
+parser.add_argument("-r", "--ref", help="Reference genome version", required=True)
+parser.add_argument("-bed", "--bed", help="bed file describing amplicon region", required=False)
+parser.add_argument("-bulk", "--bulk", help="AA breakpoint graph file for bulk cell line", required=True)
+parser.add_argument("-csv", "--csv", help="CSV input file containing band information", required=True)
+parser.add_argument("-sdv", "--sdv", help="insert_sdev for running AA. Default is 8.5", required=False)
+parser.add_argument("-min_sup", "--min_sup", help="Minimum sup pair reads for calling discordant edges. Default is 2", required=False)
+args = parser.parse_args()
+
+#################################################
+cell_line = args.sname
+output_ans = args.output
+if not args.bed:
+	generated_amplicon_bed_file()
+	amplicon_bed_file = args.bulk[args.bulk.rfind('/')+1:args.bulk.rfind('.')]+'.bed'
+else:
+	amplicon_bed_file = args.bed
+ref_v = args.ref
+bulk_AA_graph_file = args.bulk
+
+thread = args.t
 T = 101
 min_pair_support = 2
 insert_sdevs = 8.5
+if isfloat(args.sdv):
+    insert_sdevs = float(args.sdv)
+if isfloat(args.min_sup):
+    min_pair_support = int(args.min_sup)
 ########################################
-
-
+band_list , band_read, band_size_max, band_size_min, guids = parse_csv(args.csv)
+amplicon_mapping = defaultdict(list)
 os.chdir(output_ans)
 new_dir_cmd = 'mkdir graph_files'
 os.system(new_dir_cmd)
 fil_dir_cmd = 'mkdir filtered_graph_files'
 os.system(fil_dir_cmd)
-band_size_max, band_size_min, guids = parse_csv(estimated_table_size)
 band_insert_size_mean = {}
 band_insert_size_std = {}
-# '''
+
 for band in band_list:
 	name = cell_line + '_' + band
-	f1 = fastq_folder + name + '_R1.fastq'
-	f2 = fastq_folder + name + '_R2.fastq'
-	Pre_AA_cmd = "python3 {PrepareAA} --ref {ref_v} -t {thread} --use_old_samtools -s {name} --fastqs {f1} {f2} --no_filter --cngain 0 --cnsize_min 0 --cnv_bed {amplicon_bed_file} ".format(
-	PrepareAA = PrepareAA_dir , ref_v= ref_v, thread = thread, name = name , f1 = f1 , f2 = f2, amplicon_bed_file = amplicon_bed_file)
+	f1 = band_read[band][0]
+	f2 = band_read[band][1]
+	Pre_AA_cmd = "python3 {PrepareAA} --ref {ref_v} -t {thread} -s {name} --fastqs {f1} {f2} --no_filter --cngain 0 --cnsize_min 0 --cnv_bed {amplicon_bed_file} ".format(
+	PrepareAA = '$PreAA/PrepareAA.py' , ref_v= ref_v, thread = thread, name = name , f1 = f1 , f2 = f2, amplicon_bed_file = amplicon_bed_file)
 	print(Pre_AA_cmd)
 	os.system(Pre_AA_cmd)
 	os.mkdir(name+'_AA_results')
@@ -229,15 +247,14 @@ for band in band_list:
 				amplicon_mapping[band].append(amplicon_number)
 	##################		Graph Cleaner		##############################
 	for amplicon_number in amplicon_mapping[band]:
-		clean_cmd = "python2 " + cleaner_dir + " -g "+ name + "_AA_results/" + name + "_amplicon"+amplicon_number+"_graph.txt " + "--filter_non_everted --max_hop_size 1000 --max_hop_support 999999"
+		clean_cmd = "python2 " + '$PreAA/scripts/graph_cleaner.py' + " -g "+ name + "_AA_results/" + name + "_amplicon"+amplicon_number+"_graph.txt " + "--filter_non_everted --max_hop_size 1000 --max_hop_support 999999"
 		print(clean_cmd) 
 		os.system(clean_cmd)
 		mv_cmd = "mv " + name + "_amplicon"+amplicon_number+"_cleaned_graph.txt " +  "graph_files/."
 		print(mv_cmd)
 		os.system(mv_cmd)
- 	################################################ ta inja OK
+ 	
 
-# def analyze_graph_files():
 bulk = parsing_AA_graph(bulk_AA_graph_file)
 d = {}
 match_count = {}
@@ -265,7 +282,6 @@ with open('edge_comparison.txt', 'w') as f:
 	for b in band_list:
 		for amplicon_number in amplicon_mapping[b]:
 			f.write('In band {C}_amplicon{D}, {A} out of {B} are matched to bulk\n'.format(A = match_count[b+'_amplicon'+amplicon_number], B = len(d[b+'_amplicon'+amplicon_number]), C = b,D = amplicon_number))
-# '''
 ######################################################################## Finding Path
 os.system('mkdir candidate_cycles')
 os.system('mkdir candidate_cycles/beds')
@@ -274,29 +290,22 @@ os.system('mkdir candidate_cycles/visualization')
 os.system('mkdir band_cov')
 for b in band_list:
 	for amplicon_number in amplicon_mapping[b]:
-		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = find_path_script_dir, graph = 'filtered_graph_files/' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt', max_length=band_size_max[b],min_length = band_size_min[b])
+		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = '$PreAA/scripts/plausible_paths.py', graph = 'filtered_graph_files/' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt', max_length=band_size_max[b],min_length = band_size_min[b])
 		os.system(find_path_cmd)
 		print(find_path_cmd)
 		move_cmd = 'mv ' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt candidate_cycles/.' 
 		os.system(move_cmd)
 		print(move_cmd)
-		generate_cnd_cmd = 'python3 '+ generate_cnd_dir + ' -i {input} -o {output}'.format(input ='candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt', output = 'candidate_cycles/beds/'+cell_line + '_' + b+'_amplicon'+amplicon_number )
+		generate_cnd_cmd = 'python3 '+ '$PFGE/utils/generate_cnv.py' + ' -i {input} -o {output}'.format(input ='candidate_cycles/'+cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt', output = 'candidate_cycles/beds/'+cell_line + '_' + b+'_amplicon'+amplicon_number )
 		print(generate_cnd_cmd)
 		os.system(generate_cnd_cmd)
 quality_report()
 ######################################################################## visualization
 for b in band_list:
-	samtools_cmd = 'samtools depth -b {cnv} {bam} > {out}'.format(cnv = amplicon_bed_file , bam = cell_line + '_' + b+'.cs.rmdup.bam' , out = 'band_cov/'+cell_line+'_'+b+'.cov')
-	# print(samtools_cmd)
-	# os.system(samtools_cmd)
-	collaps_cmd = 'perl {perl} {cov} > {out}'.format(perl = collapse_cov_dir , cov = 'band_cov/'+cell_line+'_'+b+'.cov' , out = 'band_cov/'+cell_line+'_'+b+'.bed')
-	# print(collaps_cmd)
-	# os.system(collaps_cmd)
-	extract_bedgraph_cmd = 'python3 {extract_bedgraph} --bed {bed} --bam {bam} -o {out}'.format(extract_bedgraph = extract_bedgraph_dir , bed = amplicon_bed_file , bam = cell_line + '_' + b+'.cs.rmdup.bam',out = 'band_cov/'+cell_line+'_'+b)
+	extract_bedgraph_cmd = 'python3 {extract_bedgraph} --bed {bed} --bam {bam} -o {out}'.format(extract_bedgraph = '$CV_SRC/extract_bedgraph.py' , bed = amplicon_bed_file , bam = cell_line + '_' + b+'.cs.rmdup.bam',out = 'band_cov/'+cell_line+'_'+b)
 	print(extract_bedgraph_cmd)
 	os.system(extract_bedgraph_cmd)
-	#Old  band_norm_cmd = 'python3 {band_norm} -i {band_cov} -o {out}'.format(band_norm = band_norm_dir , band_cov ='band_cov/'+cell_line+'_'+b+'.bed', out =  'band_cov/'+cell_line+'_'+b+'_norm.bed')
-	band_norm_cmd = 'python3 {band_norm} -i {band_cov} -o {out}'.format(band_norm = band_norm_dir , band_cov ='band_cov/'+cell_line+'_'+b+'_position_coverage.bedgraph', out = 'band_cov/'+cell_line+'_'+b+'_norm.bed' )
+	band_norm_cmd = 'python3 {band_norm} -i {band_cov} -o {out}'.format(band_norm = '$PFGE/utils/band_norm.py' , band_cov ='band_cov/'+cell_line+'_'+b+'_position_coverage.bedgraph', out = 'band_cov/'+cell_line+'_'+b+'_norm.bed' )
 	print(band_norm_cmd)
 	os.system(band_norm_cmd)
 
@@ -308,7 +317,7 @@ for i in bed_list:
 		amplicon_number = i.split('_')[2][8:]
 		write_yml('candidate_cycles/yaml/'+cell_line+'_'+band+'_cycle'+cycle_number, 'band_cov/'+cell_line+'_'+band+'_norm.bed')
 		cycle_vis_cmd = 'python2 {cycle_viz} --cycles_file {cycle_file} --cycle {cycle} --graph {graph} --ref hg19 --feature_yaml_list {yaml} --label_segs numbers --center_hole 5 --feature_ref_offset 1.5 --noPDF --rotate_to_min -o {output}'.format(
-			cycle_viz =cycle_viz_dir , cycle_file = 'candidate_cycles/'+cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt' , 
+			cycle_viz ='$CV_SRC/CycleViz.py' , cycle_file = 'candidate_cycles/'+cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt' , 
 			cycle = cycle_number, graph = 'filtered_graph_files/' + cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt',
 			yaml = 'candidate_cycles/yaml/'+cell_line+'_'+band+'_cycle'+cycle_number+'.yaml',
 			output = 'candidate_cycles/visualization/'+cell_line+'_'+band+'_amplicon'+amplicon_number+'_cycle'+cycle_number)
