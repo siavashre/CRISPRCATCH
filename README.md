@@ -44,7 +44,7 @@ example command:
 
 `python3 wrapper.py -f1 SNU16_i_R1.fastq -f2 SNU16_i_R2.fastq -b i -sname SNU16 -o output/ -t 10 -r hg19 -bulk SNU16_AA_amplicon1_graph.txt -lmax 1810 -lmin 1660 -chr chr10 -g_start 123353331 -g_end 123353350 -sdv 8.5 -min_sup 2`
 
-## s_wrapper.py
+## s_wrapper.py(super wrapper)
 If you want to run the pipeline for bunch of bands together, you can use 's_wrapper.py'.
 ### Command line arguments
 - `-sname` Analyzed Cell-line name
