@@ -186,6 +186,9 @@ args = parser.parse_args()
 #################################################
 cell_line = args.sname
 pwd = os.getcwd()
+if not os.path.exists(args.output):
+	print('Output folder does not exist')
+	sys.exit(0)
 if args.bulk[0]!='/':
     args.bulk = pwd+'/'+ args.bulk
 output_ans = args.output
@@ -211,10 +214,12 @@ if isfloat(args.min_sup):
 band_list , band_read, band_size_max, band_size_min, guids = parse_csv(args.csv)
 amplicon_mapping = defaultdict(list)
 os.chdir(output_ans)
-new_dir_cmd = 'mkdir graph_files'
-os.system(new_dir_cmd)
-fil_dir_cmd = 'mkdir filtered_graph_files'
-os.system(fil_dir_cmd)
+if not os.path.exists('graph_files'):
+	new_dir_cmd = 'mkdir graph_files'
+	os.system(new_dir_cmd)
+if not os.path.exists('filtered_graph_files'):
+	fil_dir_cmd = 'mkdir filtered_graph_files'
+	os.system(fil_dir_cmd)
 band_insert_size_mean = {}
 band_insert_size_std = {}
 
@@ -226,7 +231,8 @@ for band in band_list:
 	PrepareAA = '$PreAA/PrepareAA.py' , ref_v= ref_v, thread = thread, name = name , f1 = f1 , f2 = f2, amplicon_bed_file = amplicon_bed_file)
 	print(Pre_AA_cmd)
 	os.system(Pre_AA_cmd)
-	os.mkdir(name+'_AA_results')
+	if not os.path.exists(name+'_AA_results'):
+		os.mkdir(name+'_AA_results')
 	amplified_amplicon_cmd = '$AA_SRC/amplified_intervals.py --no_cstats --bed {bed} --bam {bam} --ref hg19 --cnsize_min 0 --gain 0 --out {out}'.format(bed=amplicon_bed_file,bam = name + '.cs.rmdup.bam', out= name + '_AA_CNV_SEEDS' )
 	print(amplified_amplicon_cmd)
 	os.system(amplified_amplicon_cmd)
@@ -288,11 +294,16 @@ with open('edge_comparison.txt', 'w') as f:
 		for amplicon_number in amplicon_mapping[b]:
 			f.write('In band {C}_amplicon{D}, {A} out of {B} are matched to bulk\n'.format(A = match_count[b+'_amplicon'+amplicon_number], B = len(d[b+'_amplicon'+amplicon_number]), C = b,D = amplicon_number))
 ######################################################################## Finding Path
-os.system('mkdir candidate_cycles')
-os.system('mkdir candidate_cycles/beds')
-os.system('mkdir candidate_cycles/yaml')
-os.system('mkdir candidate_cycles/visualization')
-os.system('mkdir band_cov')
+if not os.path.exists('candidate_cycles'):
+	os.system('mkdir candidate_cycles')
+if not os.path.exists('candidate_cycles/beds'):
+	os.system('mkdir candidate_cycles/beds')
+if not os.path.exists('candidate_cycles/yaml'):
+	os.system('mkdir candidate_cycles/yaml')
+if not os.path.exists('candidate_cycles/visualization'):
+	os.system('mkdir candidate_cycles/visualization')
+if not os.path.exists('band_cov'):
+	os.system('mkdir band_cov')
 for b in band_list:
 	for amplicon_number in amplicon_mapping[b]:
 		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = '$PreAA/scripts/CAMPER.py', graph = 'filtered_graph_files/' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt', max_length=band_size_max[b],min_length = band_size_min[b])
