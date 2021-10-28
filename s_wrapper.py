@@ -290,7 +290,7 @@ os.system('mkdir candidate_cycles/visualization')
 os.system('mkdir band_cov')
 for b in band_list:
 	for amplicon_number in amplicon_mapping[b]:
-		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = '$PreAA/scripts/plausible_paths.py', graph = 'filtered_graph_files/' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt', max_length=band_size_max[b],min_length = band_size_min[b])
+		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = '$PreAA/scripts/CAMPER.py', graph = 'filtered_graph_files/' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_graph.txt', max_length=band_size_max[b],min_length = band_size_min[b])
 		os.system(find_path_cmd)
 		print(find_path_cmd)
 		move_cmd = 'mv ' + cell_line + '_' + b + '_amplicon'+amplicon_number+'_cleaned_filtered_candidate_cycles.txt candidate_cycles/.' 
