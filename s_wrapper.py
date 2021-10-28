@@ -185,11 +185,16 @@ args = parser.parse_args()
 
 #################################################
 cell_line = args.sname
+pwd = os.getcwd()
+if args.bulk[0]!='/':
+    args.bulk = pwd+'/'+ args.bulk
 output_ans = args.output
 if not args.bed:
 	generated_amplicon_bed_file()
 	amplicon_bed_file = args.bulk[args.bulk.rfind('/')+1:args.bulk.rfind('.')]+'.bed'
 else:
+	if args.bed[0]!='/':
+    args.bed = pwd+'/'+ args.bed
 	amplicon_bed_file = args.bed
 ref_v = args.ref
 bulk_AA_graph_file = args.bulk

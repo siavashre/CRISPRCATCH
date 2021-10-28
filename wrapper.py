@@ -258,7 +258,13 @@ band_size_max = int(float(args.lmax))
 band_size_min = int(float(args.lmin))
 min_sup = 2
 sdv = 8.5
-
+pwd = os.getcwd()
+if args.bulk[0]!='/':
+    args.bulk = pwd+'/'+ args.bulk
+if args.fastq1[0]!='/':
+    args.fastq1 = pwd+'/'+ args.fastq1
+if args.fastq2[0]!='/':
+    args.fastq2 = pwd+'/'+ args.fastq2
 if isfloat(args.sdv):
     sdv = float(args.sdv)
 if isfloat(args.min_sup):
@@ -275,6 +281,8 @@ if not args.bed:
 	generated_amplicon_bed_file()
 	amplicon_bed_file = args.bulk[args.bulk.rfind('/')+1:args.bulk.rfind('.')]+'.bed'
 else:
+	if args.bed[0]!='/':
+    args.bed = pwd+'/'+ args.bed
 	amplicon_bed_file = args.bed
 i_mean, i_std = run_AA(args.fastq1,args.fastq2,args.ref)
 amplicon_mapping = detecting_amplion_numbers()
