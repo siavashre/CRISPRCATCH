@@ -19,6 +19,12 @@ After installing prerequisites, please clone the PFGE repo consider running the 
         cd PFGE/
         echo export PFGE=$PWD >> ~/.bashrc
         source ~/.bashrc
+        
+For making sure that you install all requiements correctly, please download these two fastq files: [fastq1](https://drive.google.com/file/d/1iYOMtjag3mnZdw5Bqm2cdatE_OwJXFk3/view?usp=sharing) and [fastq2](https://drive.google.com/file/d/1-Vbj6lAsQtQyeXZyT2jZi08HiPT3uUaJ/view?usp=sharing). Then run the following command, if every things installed properly, after ~30 min the pipeline should generate GBM39 amplicon structure.
+
+`python3 wrapper.py -f1 path_to_file1 -f2 path_to_file2 -b i -sname GBM39 -o path_to_output_dir -t 1 -r hg19 -bulk test_data/GBM39_AA_graph.txt -lmax 1370 -lmin 1200 -chr chr7 -g_start 55256396 -g_end 55256397`
+
+
 ## Usage
 PFGE takes as an input sequence data comes from PFGE experiment for a band. Sequence data in `.fastq` format, expected length of band and outputed best candidates structure for band's structure. 
 
