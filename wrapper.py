@@ -194,7 +194,7 @@ def run_path_finder():
 	if not os.path.exists('beds'):
 		os.mkdir('beds')
 	for amplicon_number in amplicon_mapping:
-		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = '$PreAA/scripts/plausible_paths.py', graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt', max_length=band_size_max, min_length = band_size_min)
+		find_path_cmd = "python3 {script} -g {graph} --keep_all_LC --remove_short_jumps --runmode isolated --max_length {max_length} --min_length {min_length}".format(script = '$PreAA/scripts/CAMPER.py', graph =  cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_graph.txt', max_length=band_size_max, min_length = band_size_min)
 		call(find_path_cmd,shell=True)
 		print(find_path_cmd)
 		generate_cnd_cmd = 'python3 '+ '$PFGE/utils/generate_cnv.py' + ' -i {input} -o {output}'.format(input =cell_line + '_' + band + '_amplicon'+amplicon_number+'_cleaned_candidate_cycles.txt', output = 'beds/'+cell_line + '_' + band+'_amplicon'+amplicon_number )
