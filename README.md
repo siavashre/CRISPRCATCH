@@ -22,27 +22,27 @@ After installing prerequisites, please clone the PFGE repo consider running the 
         
 For making sure that you install all requiements correctly, please download these two fastq files: [fastq1](https://drive.google.com/file/d/1iYOMtjag3mnZdw5Bqm2cdatE_OwJXFk3/view?usp=sharing) and [fastq2](https://drive.google.com/file/d/1-Vbj6lAsQtQyeXZyT2jZi08HiPT3uUaJ/view?usp=sharing). Then run the following command, if every things installed properly, after ~30 min the pipeline should generate GBM39 amplicon structure.
 
-`python3 wrapper.py -f1 path_to_file1 -f2 path_to_file2 -b i -sname GBM39 -o path_to_output_dir -t 1 -r hg19 -bulk test_data/GBM39_AA_graph.txt -lmax 1370 -lmin 1200 -chr chr7 -g_start 55256396 -g_end 55256397`
+`python3 wrapper.py -f1 absolute_path_to_file1 -f2 absolute_path_to_file2 -b i -sname GBM39 -o path_to_output_dir -t 1 -r hg19 -bulk test_data/GBM39_AA_graph.txt -lmax 1370 -lmin 1200 -chr chr7 -g_start 55256396 -g_end 55256397`
 
 
 ## Usage
 PFGE takes as an input sequence data comes from PFGE experiment for a band. Sequence data in `.fastq` format, expected length of band and outputed best candidates structure for band's structure. 
 
 ### Command line arguments
-- `-f1` Path to band_r1.fastq file
-- `-f2` Path to band_r2.fastq file
+- `-f1` Absolute Path to band_r1.fastq file
+- `-f2` Absolute Path to band_r2.fastq file
 - `-b` Analyzed band label name
 - `-sname` Analyzed Cell-line name
 - `-o` Output folder directory for saving results
 - `-t` Number of threads
 - `-r` Reference genome version. It can be hg19 or hg38.
-- `-bulk` Path to the AA breakpoint graph file for bulk cell-line
+- `-bulk` Absolute Path to the AA breakpoint graph file for bulk cell-line
 - `-lmax` Maximum estimated length for structure in terms of Kbp. 
 - `-lmin` Minimum estimated length for structure in terms of Kbp. 
 - `-chr` Chromosome of target cite. Please write 'chr' + chromosome number.
 - `-g_start` Target cite starting position in bp.
 - `-g_end` Target cite ending position in bp.
-- `-bed` bed file that spcifying amplicon region. It is not required field, PFGE can generate this from AA breakpoint graph file on bulk. 
+- `-bed` Absolute path to bed file that spcifying amplicon region. It is not required field, PFGE can generate this from AA breakpoint graph file on bulk. 
 - `-min_sup` specifying minimum number of reads for calling a breakpoint. Default value is 2. If you have high coverage data please set it to 4.
 - `-sdv` specifying insert_size sdv for filtering reads for calling breakpoints. Default value is 8.5.
 
@@ -57,8 +57,8 @@ If you want to run the pipeline for bunch of bands together, you can use 's_wrap
 - `-o` Output folder directory for saving results
 - `-t` Number of threads
 - `-r` Reference genome version. It can be hg19 or hg38.
-- `-bulk` Path to the AA breakpoint graph file for bulk cell-line
-- `-bed` bed file that spcifying amplicon region. It is not required field, PFGE can generate this from AA breakpoint graph file on bulk. 
+- `-bulk` Absolute path to the AA breakpoint graph file for bulk cell-line
+- `-bed` Absolute path to bed file that spcifying amplicon region. It is not required field, PFGE can generate this from AA breakpoint graph file on bulk. 
 - `-min_sup` specifying minimum number of reads for calling a breakpoint. Default value is 2. If you have high coverage data please set it to 4.
 - `-sdv` specifying insert_size sdv for filtering reads for calling breakpoints. Default value is 8.5.
 - `-csv` specifying a csv file containing bands information. Please take a look at 'example.csv' and fill the information as needed. Please use the absolute path for column read1 and read2.
