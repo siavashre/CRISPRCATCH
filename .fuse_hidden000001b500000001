@@ -1,2 +1,0 @@
-band,read1,read2,guide_chr,guide_start,guide_end,band_max_len,band_min_len
-I,/nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/SNU16_i_R1.fastq,/nucleus/projects/sraeisid/AA/SNU16_run5_high_cov/fastqs/SNU16_i_R2.fastq,chr10,123353331,123353350,1810,1660
