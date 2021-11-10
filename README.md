@@ -15,7 +15,12 @@ This tool uses pre-developed tools and the user must install them before using t
 - The [jluebeck/CycleViz](https://github.com/jluebeck/CycleViz) is mandatory and the variable `$CV_SRC` should set in the bashrc. You can find more information about how install CycleViz and set `$CV_SRC` on CycleViz Github page.
 - [samtools](http://www.htslib.org/) (CRISPRCATCH supports versions >= 1.0)
 - [bwa mem](https://github.com/lh3/bwa) (BWA MEM should be on the system path after installing so it can be called by PrepareAA)
-- [picard](https://github.com/broadinstitute/picard). Variable `$PICARD` should be set in the bashrc file to the directory picard is installed.
+- [picard](https://github.com/broadinstitute/picard). Variable `$PICARD` should be set in the bashrc file to the directory picard is installed. For doing that, change the directory to where you have picard jar file and run the following commands:
+
+        cd path/to/picard/
+        echo export PICARD=$PWD >> ~/.bashrc
+        source ~/.bashrc
+         
 - [intervaltree](https://github.com/chaimleib/intervaltree) (`pip install intervaltree`)
 
 After installing prerequisites, please clone the PFGE repo consider running the following to add a line to your `.bashrc` file:
