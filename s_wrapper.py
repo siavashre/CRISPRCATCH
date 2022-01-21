@@ -197,7 +197,7 @@ if not args.bed:
 	amplicon_bed_file = args.bulk[args.bulk.rfind('/')+1:args.bulk.rfind('.')]+'.bed'
 else:
 	if args.bed[0]!='/':
-    args.bed = pwd+'/'+ args.bed
+    		args.bed = pwd+'/'+ args.bed
 	amplicon_bed_file = args.bed
 ref_v = args.ref
 bulk_AA_graph_file = args.bulk
