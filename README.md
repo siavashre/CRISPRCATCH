@@ -74,5 +74,5 @@ If you want to run the pipeline for bunch of bands together (multiple fastq pair
 - `-csv` specifying a csv file containing bands information. Please take a look at 'example.csv' and fill the information as needed. Please use the absolute path for column read1 and read2.
 example command: 
 
-`python3 pipeline.py -csv SNU16_i.csv -sname SNU16 -t 10 -r hg19 -o output/ -bulk SNU16_AA_amplicon1_graph.txt -sdv 8.5 -min_sup 2 -bed DNU16.bed`
+`python3 s_wrapper.py -csv SNU16_i.csv -sname SNU16 -t 10 -r hg19 -o output/ -bulk SNU16_AA_amplicon1_graph.txt -sdv 8.5 -min_sup 2 -bed DNU16.bed`
 
